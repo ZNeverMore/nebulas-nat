@@ -28,7 +28,7 @@
         this.allTX = []
         let address1 = 'n1ih5HkecJj93yx3vHtybRxoF8UEfdksxMi'
         let address = 'n1obU14f6Cp4Wv7zANVbtmXKNkpKCqQDgDM'
-        let url = 'https://explorer-backend.nebulas.io/api/address/n1obU14f6Cp4Wv7zANVbtmXKNkpKCqQDgDM'
+        let url = 'https://explorer-backend.nebulas.io/api/address/' + address1
         axios.get(url).then(response => {
           console.log(response)
           for (let i = 0; i < response.data.data.txList.length; i++) {
@@ -79,11 +79,11 @@
         let end = new Date('2019-5-27 12:00:00')
         let endTimestamp = end.getTime()
         let url = 'https://mainnet.nebulas.io/v1/user/getEventsByHash'
-        for (let i = 0; i < this.nrList.length; i++) {
-          let timestamp = this.nrList[i].timestamp
-          if (timestamp > startTimestamp && timestamp < endTimestamp) {
+        for (let i = 0; i < this.pledgeList.length; i++) {
+          let timestamp = this.pledgeList[i].timestamp
+          // if (timestamp > startTimestamp && timestamp < endTimestamp) {
             let obj = {
-              hash: this.nrList[i].hash
+              hash: this.pledgeList[i].hash
             }
             axios.post(url,
               JSON.stringify(obj),
@@ -111,7 +111,7 @@
               }
               console.log('nat:  ', this.nat)
             })
-          }
+          // }
         }
         // let obj = {
         //   hash: '21c9f3007c30f59a6935fbe2a7f36fbad6a35dd237393ce4aa4d0fa8fd4da00c'
