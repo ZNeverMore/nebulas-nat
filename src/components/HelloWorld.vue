@@ -15,127 +15,129 @@
     name: 'HelloWorld',
     data() {
       return {
-        pledgeList: [],
+        nrNat: 0,
+        pledgeNat: 0,
         nrList: [],
-        allTX: [],
-        nat: 0
+        pledgeList: [],
+        totalPage: 0
       }
     },
     methods: {
       getTX() {
-        this.pledgeList = []
         this.nrList = []
-        this.allTX = []
-        let address1 = 'n1ih5HkecJj93yx3vHtybRxoF8UEfdksxMi'
-        let address = 'n1obU14f6Cp4Wv7zANVbtmXKNkpKCqQDgDM'
-        let url = 'https://explorer-backend.nebulas.io/api/address/' + address1
-        axios.get(url).then(response => {
-          console.log(response)
-          for (let i = 0; i < response.data.data.txList.length; i++) {
-            let item = response.data.data.txList[i]
-            if (item.status === 1) {
-              let type = JSON.parse(item.data)
-              if (type.function === 'triggerPledge') {
-                this.pledgeList.push({
-                  hash: item.hash,
-                  timestamp: item.timestamp,
-                  type: 'pledge'
-                })
-              }
-              if (type.Function === 'triggerPledge') {
-                this.pledgeList.push({
-                  hash: item.hash,
-                  timestamp: item.timestamp,
-                  type: 'pledge'
-                })
-              }
-              if (type.function === 'triggerNR') {
-                this.nrList.push({
-                  hash: item.hash,
-                  timestamp: item.timestamp,
-                  type: 'nr'
-                })
-              }
-              if (type.Function === 'triggerNR') {
-                this.nrList.push({
-                  hash: item.hash,
-                  timestamp: item.timestamp,
-                  type: 'nr'
-                })
-              }
-            }
+        this.pledgeList = []
+        let address = 'n1EoNsJNXG1tN3z9rvjwPKoBXbJMqAjmESC'
+        let url = 'https://explorer-backend.nebulas.io/api/tx/'
+        let firstParams = {
+          params: {
+            a: address,
+            p: 1
           }
-          this.allTX = this.pledgeList.concat(this.nrList)
-          if (this.pledgeList.length > 0) {
-            alert('success')
-          } else {
-            alert('failed')
-          }
+        }
+        axios.get(url, firstParams).then(response => {
+          let data = response.data
+          this.totalPage = data.data.totalPage
+          this.getAllTx(url, address)
         })
       },
-      getNAT() {
-        let start = new Date('2019-5-20 12:00:00')
-        let startTimestamp = start.getTime()
-        let end = new Date('2019-5-27 12:00:00')
-        let endTimestamp = end.getTime()
-        let url = 'https://mainnet.nebulas.io/v1/user/getEventsByHash'
-        for (let i = 0; i < this.pledgeList.length; i++) {
-          let timestamp = this.pledgeList[i].timestamp
-          // if (timestamp > startTimestamp && timestamp < endTimestamp) {
-            let obj = {
-              hash: this.pledgeList[i].hash
+      getAllTx(url, address) {
+        if (this.totalPage === 0) {
+          alert('illegal totalPage')
+        }
+        for (let i = 1; i <= this.totalPage; i++) {
+          let params = {
+            params: {
+              a: address,
+              p: i
             }
-            axios.post(url,
-              JSON.stringify(obj),
-              {
-                headers: {
-                  'Content-Type': 'application/json'
+          }
+          axios.get(url, params).then(response => {
+            console.log(response.data)
+            let data = response.data
+            this.totalPage = data.data.totalPage
+            let start = new Date('2019-5-27 12:00:00')
+            let startTimestamp = start.getTime()
+            let end = new Date('2019-6-4 12:00:00')
+            let endTimestamp = end.getTime()
+            let list = data.data.txnList
+            for (let j = 0; j < list.length; j++) {
+              if (list[j].timestamp > startTimestamp && list[j].timestamp < endTimestamp && list[j].status === 1) {
+                console.log()
+                let json = JSON.parse(list[j].data)
+                if (json.Function === 'triggerNR') {
+                  let item = {
+                    hash: list[j].hash,
+                    timestamp: list[j].timestamp
+                  };
+                  this.nrList.push(item)
                 }
-              }).then(response => {
-              let list = response.data.result.events
-              for (let j = 0; j < list.length; j++) {
-                if (list[j].topic === 'chain.contract.pledge') {
-                  let json = JSON.parse(list[j].data)
-                  for (let k = 0; k < json.data.length; k++) {
-                    this.nat += parseFloat(json.data[k].nat)
+                if (json.function === 'triggerPledge' || json.Function === 'triggerPledge') {
+                  let item = {
+                    hash: list[j].hash,
+                    timestamp: list[j].timestamp
                   }
-                  break
-                }
-                if (list[j].topic === 'chain.contract.nr') {
-                  let json = JSON.parse(list[j].data)
-                  for (let k = 0; k < json.data.length; k++) {
-                    this.nat += parseFloat(json.data[k].nat)
-                  }
-                  break
+                  this.pledgeList.push(item)
                 }
               }
-              console.log('nat:  ', this.nat)
-            })
-          // }
+            }
+          })
         }
-        // let obj = {
-        //   hash: '21c9f3007c30f59a6935fbe2a7f36fbad6a35dd237393ce4aa4d0fa8fd4da00c'
-        // }
-        // axios.post(url,
-        //   JSON.stringify(obj),
-        //   {
-        //     headers: {
-        //       'Content-Type': 'application/json'
-        //     }
-        //   }).then(response => {
-        //   let list = response.data.result.events
-        //   for (let j = 0; j < list.length; j++) {
-        //     if (list[j].topic === 'chain.contract.pledge') {
-        //       let json = JSON.parse(list[j].data)
-        //       let totalNat = 0
-        //       for (let k = 0; k < json.data.length; k++) {
-        //         totalNat += parseFloat(json.data[k].nat)
-        //       }
-        //       console.log(totalNat)
-        //       break
-        //     }
-        //   }
-        // })
+      },
+      getNAT() {
+        if (this.nrList.length === 0) {
+          alert('please get transaction first')
+          return
+        }
+        let count = 0;
+        let url = 'https://mainnet.nebulas.io/v1/user/getEventsByHash';
+        for (let i = 0; i < this.nrList.length; i++) {
+          axios.post(url,
+            JSON.stringify({hash: this.nrList[i].hash}),
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }).then(response => {
+            console.log(response)
+            let events = response.data.result.events
+            for (let j = 0; j < events.length; j++) {
+              if (events[j].topic === 'chain.contract.NATToken') {
+                let result = JSON.parse(events[j].data)
+                let natList = result.Produce.data
+                count += natList.length;
+                for (let k = 0; k < natList.length; k++) {
+                  this.nrNat += parseFloat(natList[k].value)
+
+                }
+              }
+            }
+            console.log("total:" + count)
+          })
+        }
+
+        for (let l = 0; l < this.pledgeList.length; l++) {
+          axios.post(url,
+          JSON.stringify({hash: this.pledgeList[l].hash}),
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }).then(response => {
+              console.log('pledge-response: ', response)
+            let pledgeEvents = response.data.result.events
+            for (let m = 0; m < pledgeEvents.length; m++) {
+              if (pledgeEvents[m].topic === 'chain.contract.NATToken') {
+                let result = JSON.parse(pledgeEvents[m].data)
+                let pledgeNatList = result.Produce.data
+                for (let n = 0; n < pledgeNatList.length; n++) {
+                  this.pledgeNat += parseFloat(pledgeNatList[n].value)
+                }
+              }
+            }
+          })
+        }
+
+
       }
     }
   }
