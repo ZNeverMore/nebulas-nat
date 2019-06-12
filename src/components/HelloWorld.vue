@@ -1,8 +1,23 @@
 <template>
   <div class="hello">
-    <h2>Essential Links</h2>
-    <button type="button" @click="getTX">get transaction</button>
-    <button @click="getNAT">get NAT</button>
+    <el-date-picker
+      v-model="startAndEndTime"
+      type="datetimerange"
+      range-separator="至"
+      start-placeholder="开始日期"
+      end-placeholder="结束日期"
+    >
+    </el-date-picker>
+    <el-button type="primary" @click="getTX" round>get transaction</el-button>
+    <el-button type="primary" @click="getNAT" round>get NAT</el-button>
+    <div v-show="pledgeData.show">
+      <p>
+        {{nrData.str}}
+      </p>
+      <p>
+        {{pledgeData.str}}
+      </p>
+    </div>
   </div>
 </template>
 
@@ -19,12 +34,23 @@
         pledgeNat: 0,
         nrList: [],
         pledgeList: [],
-        totalPage: 0
+        totalPage: 0,
+        startAndEndTime: [],
+        pledgeData: {
+          show: false
+        },
+        nrData: {
+          show: false
+        }
       }
     },
     methods: {
       getTX() {
-        this.nrList = []
+        if (this.startAndEndTime.length !== 2) {
+          alert('please select time')
+          return
+        }
+        this.nrList = [];
         this.pledgeList = []
         let address = 'n1EoNsJNXG1tN3z9rvjwPKoBXbJMqAjmESC'
         let url = 'https://explorer-backend.nebulas.io/api/tx/'
@@ -43,6 +69,7 @@
       getAllTx(url, address) {
         if (this.totalPage === 0) {
           alert('illegal totalPage')
+          return
         }
         for (let i = 1; i <= this.totalPage; i++) {
           let params = {
@@ -55,10 +82,8 @@
             console.log(response.data)
             let data = response.data
             this.totalPage = data.data.totalPage
-            let start = new Date('2019-5-27 12:00:00')
-            let startTimestamp = start.getTime()
-            let end = new Date('2019-6-4 12:00:00')
-            let endTimestamp = end.getTime()
+            let startTimestamp = this.startAndEndTime[0].getTime()
+            let endTimestamp = this.startAndEndTime[1].getTime()
             let list = data.data.txnList
             for (let j = 0; j < list.length; j++) {
               if (list[j].timestamp > startTimestamp && list[j].timestamp < endTimestamp && list[j].status === 1) {
@@ -98,7 +123,7 @@
                 'Content-Type': 'application/json'
               }
             }).then(response => {
-            console.log(response)
+            // console.log(response)
             let events = response.data.result.events
             for (let j = 0; j < events.length; j++) {
               if (events[j].topic === 'chain.contract.NATToken') {
@@ -107,23 +132,21 @@
                 count += natList.length;
                 for (let k = 0; k < natList.length; k++) {
                   this.nrNat += parseFloat(natList[k].value)
-
                 }
               }
             }
-            console.log("total:" + count)
           })
         }
 
         for (let l = 0; l < this.pledgeList.length; l++) {
           axios.post(url,
-          JSON.stringify({hash: this.pledgeList[l].hash}),
+            JSON.stringify({hash: this.pledgeList[l].hash}),
             {
               headers: {
                 'Content-Type': 'application/json'
               }
             }).then(response => {
-              console.log('pledge-response: ', response)
+            // console.log('pledge-response: ', response)
             let pledgeEvents = response.data.result.events
             for (let m = 0; m < pledgeEvents.length; m++) {
               if (pledgeEvents[m].topic === 'chain.contract.NATToken') {
@@ -137,7 +160,29 @@
           })
         }
 
+        function sleep(milliseconds) {
+          return new Promise(resolve => setTimeout(resolve, milliseconds))
+        }
 
+        sleep(2000).then(() => {
+          let nrStr = 'NR计算周期：' + this.dateFormat(this.startAndEndTime[0].getTime()) + '-' + this.dateFormat(this.startAndEndTime[1].getTime()) + '\n'
+          + '通过NR发放的NAT数量：' + parseInt(this.nrNat / 1000000000000000000)
+          this.nrData.str = nrStr
+          this.nrData.show = true
+          let pledgeStr = '质押周期：' + this.dateFormat(this.startAndEndTime[0].getTime() - 3600 * 1000 * 24 * 7) + '-' + this.dateFormat(this.startAndEndTime[1].getTime() - 3600 * 1000 * 24 * 7)
+          + '通过该周期质押进行发放的NAT数量共有' + parseInt(this.pledgeNat / 1000000000000000000)
+          this.pledgeData.str = pledgeStr
+          this.pledgeData.show = true
+        });
+      },
+      dateFormat(timestamp) {
+        console.log('timestamp: ', timestamp)
+        let date = new Date(timestamp)
+        let month = date.getMonth() + 1
+        let day = date.getDate()
+        let hour = date.getHours()
+        let minutes = date.getMinutes()
+        return month + '月' + day + '日' + hour + ':' + minutes
       }
     }
   }
