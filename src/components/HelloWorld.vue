@@ -1,43 +1,54 @@
 <template>
   <div class="hello">
-    <div class="pledge-nr-data">
+    <div class="pledge-data">
       <el-date-picker
-        v-model="startAndEndTime"
+        v-model="pledgeData.period"
         type="datetimerange"
         range-separator="至"
         start-placeholder="开始日期"
         end-placeholder="结束日期"
       >
       </el-date-picker>
-      <el-button type="primary" @click="getTX(startAndEndTime, getTxUrl, pledgeAndNrAddress)" round>get pledge&nr transaction</el-button>
-      <el-button type="primary" @click="getNAT(startAndEndTime)" round>get NAT</el-button>
+      <el-button type="primary" @click="getPledgeNatOrNrNat('pledge', pledgeData.period)" round>get pledge nat</el-button>
       <div>
         <p v-show="pledgeData.show">
-          {{nrData.str}}
-        </p>
-        <p v-show="nrData.show">
           {{pledgeData.str}}
         </p>
       </div>
     </div>
-    <div class="vote-data" style="margin-top: 50px">
-      <!--<el-input v-model="inputAddress" style="width: 280px"></el-input>-->
+    <div class="nr-data" style="margin-top: 50px">
       <el-date-picker
-        v-model="voteTime"
+        v-model="nrData.period"
         type="datetimerange"
         range-separator="至"
         start-placeholder="开始日期"
         end-placeholder="结束日期"
       >
       </el-date-picker>
-      <el-button type="primary" @click="getTX(voteTime, getTxUrl, voteAddress)" round>get vote transaction</el-button>
-      <el-button type="primary" @click="getVoteNAT(voteTime)" round>get vote nat</el-button>
+      <el-button type="primary" @click="getPledgeNatOrNrNat('nr', nrData.period)" round>get nr NAT</el-button>
+      <div>
+        <p v-show="nrData.show">
+          {{nrData.str}}
+        </p>
+      </div>
+    </div>
+    <div class="vote-data" style="margin-top: 50px">
+      <el-date-picker
+        v-model="voteData.period"
+        type="datetimerange"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+      >
+      </el-date-picker>
+      <el-button type="primary" @click="getVoteNat(voteData.period)" round>get vote nat</el-button>
       <div>
         <p v-show="voteData.show">
           {{voteData.str}}
         </p>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -54,240 +65,259 @@
         voteAddress: 'n1pADU7jnrvpPzcWusGkaizZoWgUywMRGMY',
         getTxUrl: 'https://explorer-backend.nebulas.io/api/tx/',
         getEventByHashUrl: 'https://mainnet.nebulas.io/v1/user/getEventsByHash',
-        inputAddress: '',
-        totalPage: 0,
-        startAndEndTime: [],
-        voteTime: [],
-        allTx: [],
+        testPeriod: [],
         pledgeData: {
+          period: [],
           pledgeList: [],
           pledgeNat: 0,
-          show: false
+          show: false,
+          topic: 'chain.contract.NATToken'
         },
         nrData: {
-          nrNat: 0,
+          period: [],
           nrList: [],
-          show: false
+          nrNat: 0,
+          show: false,
+          topic: 'chain.contract.NATToken'
         },
         voteData: {
+          period: [],
           voteList: [],
-          show: false,
           rewardNat: 0,
-          burnNat: 0
+          burnNat: 0,
+          show: false,
+          topic: 'chain.contract.vote'
+        },
+        AddressData: {
+          address: '',
+          period: [],
+          pledge: {
+            nat: 0
+          },
+          nr: {
+            nat: 0
+          },
+          vote: {
+            rewardNat: 0,
+            usedNat: 0,
+            burnNat: 0
+          },
+          str: '',
+          show: false
         }
       }
     },
+    mounted() {
+      this.get(this.getTxUrl, this.pledgeAndNrAddress)
+      this.get(this.getTxUrl, this.voteAddress)
+    },
     methods: {
-      getTX(time, url, address) {
-        if (time.length !== 2) {
-          this.$message({
-            message: 'please select time first',
-            type: 'error',
-            duration: 1000
-          })
-          return
-        }
-        this.nrData.nrList = []
-        this.pledgeData.pledgeList = []
-        this.voteData.voteList = []
-        let firstParams = {
+      get(url, address) {
+        let firstParam = {
           params: {
             a: address,
             p: 1
           }
         }
-        axios.get(url, firstParams).then(response => {
-          let data = response.data
-          this.totalPage = data.data.totalPage
-          this.getAllTx(time, url, address)
+        axios.get(url, firstParam).then(response => {
+          let totalPage = response.data.data.totalPage
+          for (let i = 1; i <= totalPage; i++) {
+            let params = {
+              params: {
+                a: address,
+                p: i
+              }
+            }
+            axios.get(url, params).then(response => {
+              let list = response.data.data.txnList
+              for (let j = 0; j < list.length; j++) {
+                if (list[j].status === 1) {
+                  let json = JSON.parse(list[j].data);
+                  if (json.Function === 'triggerNR') {
+                    let item = {
+                      hash: list[j].hash,
+                      timestamp: list[j].timestamp
+                    }
+                    this.nrData.nrList.push(item)
+                  }
+                  if (json.function === 'triggerPledge' || json.Function === 'triggerPledge') {
+                    let item = {
+                      hash: list[j].hash,
+                      timestamp: list[j].timestamp
+                    }
+                    this.pledgeData.pledgeList.push(item)
+                  }
+                  if (json.Function === 'vote') {
+                    let item = {
+                      hash: list[j].hash,
+                      timestamp: list[j].timestamp
+                    }
+                    this.voteData.voteList.push(item)
+                  }
+                }
+                if (i === totalPage && j === list.length - 1) {
+                  console.log('get complete')
+                }
+              }
+            })
+          }
         })
       },
-      getAllTx(time, url, address) {
-        if (this.totalPage === 0) {
-          alert('illegal totalPage')
+      getPledgeNatOrNrNat(tag, period, address = '') {
+        if (period.length !== 2) {
+          this.$notify.error({
+            title: 'failed',
+            message: 'select time first',
+            type: 'error',
+            duration: 1000
+          })
           return
         }
-        for (let i = 1; i <= this.totalPage; i++) {
-          let params = {
-            params: {
-              a: address,
-              p: i
+        let list
+        let topic
+        let startTimestamp = period[0].getTime()
+        let endTimestamp = period[1].getTime()
+        let periodList = []
+        if (tag === 'pledge') {
+          list = this.pledgeData.pledgeList
+          topic = this.pledgeData.topic
+          this.pledgeData.pledgeNat = 0
+          for (let m = 0; m < list.length; m++) {
+            if (list[m].timestamp > startTimestamp && list[m].timestamp < endTimestamp) {
+              periodList.push(list[m])
             }
           }
-          axios.get(url, params).then(response => {
-            console.log(response.data)
-            let data = response.data
-            let startTimestamp = time[0].getTime()
-            let endTimestamp = time[1].getTime()
-            let list = data.data.txnList
-            for (let j = 0; j < list.length; j++) {
-              if (list[j].status === 1) {
-                let item = {
-                  hash: list[j].hash,
-                  timestamp: list[j].timestamp
-                }
-                this.allTx.push(item)
-              }
-              if (list[j].timestamp > startTimestamp && list[j].timestamp < endTimestamp && list[j].status === 1) {
-                let json = JSON.parse(list[j].data);
-                if (json.Function === 'triggerNR') {
-                  let item = {
-                    hash: list[j].hash,
-                    timestamp: list[j].timestamp
-                  };
-                  this.nrData.nrList.push(item)
-                }
-                if (json.function === 'triggerPledge' || json.Function === 'triggerPledge') {
-                  let item = {
-                    hash: list[j].hash,
-                    timestamp: list[j].timestamp
-                  }
-                  this.pledgeData.pledgeList.push(item)
-                }
-                if (json.Function === 'vote') {
-                  let item = {
-                    hash: list[j].hash,
-                    timestamp: list[j].timestamp
-                  }
-                  this.voteData.voteList.push(item)
-                }
-              }
-              if (i === this.totalPage && j === list.length - 1) {
-                this.$notify({
-                  title: 'success',
-                  message: 'get transaction success',
-                  type: 'success',
-                  duration: 700
-                })
-              }
+        }
+        if (tag === 'nr') {
+          list = this.nrData.nrList
+          topic = this.nrData.topic
+          this.nrData.nrNat = 0
+          for (let n = 0; n < list.length; n++) {
+            if (list[n].timestamp > startTimestamp && list[n].timestamp < endTimestamp) {
+              periodList.push(list[n])
             }
-          }).catch(function () {
-            this.$notify.error({
-              title: 'failed',
-              message: 'get transaction failed',
-              type: 'error',
-              duration: 1000
-            })
-          })
+          }
         }
-      },
-      getNAT(time) {
-        if (this.nrData.nrList.length === 0 || this.pledgeData.pledgeList.length === 0 || time.length !== 2) {
-          this.$message({
-            type: 'error',
-            message: 'please get transaction first',
-            duration: 1000
-          })
-          return
-        }
-        this.nrData.nrNat = 0
-        this.pledgeData.pledgeNat = 0
-        for (let i = 0; i < this.nrData.nrList.length; i++) {
+        for (let i = 0; i < periodList.length; i++) {
           axios.post(this.getEventByHashUrl,
-            JSON.stringify({hash: this.nrData.nrList[i].hash}),
+            JSON.stringify({hash: periodList[i].hash}),
             {
               headers: {
                 'Content-Type': 'application/json'
               }
             }).then(response => {
-            // console.log(response)
             let events = response.data.result.events
             for (let j = 0; j < events.length; j++) {
-              if (events[j].topic === 'chain.contract.NATToken') {
+              if (events[j].topic === topic) {
                 let result = JSON.parse(events[j].data)
-                let natList = result.Produce.data
-                for (let k = 0; k < natList.length; k++) {
-                  this.nrData.nrNat += parseFloat(natList[k].value)
+                let data = result.Produce.data
+                for (let k = 0; k < data.length; k++) {
+                  if (tag === 'pledge') {
+                    this.pledgeData.pledgeNat += parseFloat(data[k].value)
+                    if (address.length > 0 && address === data[k].addr) {
+                      this.AddressData.pledge.nat += parseFloat(data[k].value)
+                    }
+                  }
+                  if (tag === 'nr') {
+                    this.nrData.nrNat += parseFloat(data[k].value)
+                    if (address.length > 0 && address === data[k].addr) {
+                      this.AddressData.nr.nat += parseFloat(data[k].value)
+                    }
+                  }
                 }
               }
             }
-          })
+          });
         }
-
-        for (let l = 0; l < this.pledgeData.pledgeList.length; l++) {
-          axios.post(this.getEventByHashUrl,
-            JSON.stringify({hash: this.pledgeData.pledgeList[l].hash}),
-            {
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            }).then(response => {
-            // console.log('pledge-response: ', response)
-            let pledgeEvents = response.data.result.events
-            for (let m = 0; m < pledgeEvents.length; m++) {
-              if (pledgeEvents[m].topic === 'chain.contract.NATToken') {
-                let result = JSON.parse(pledgeEvents[m].data)
-                let pledgeNatList = result.Produce.data
-                for (let n = 0; n < pledgeNatList.length; n++) {
-                  this.pledgeData.pledgeNat += parseFloat(pledgeNatList[n].value)
-                }
-              }
-            }
-          })
-        }
-
-        function sleep(milliseconds) {
-          return new Promise(resolve => setTimeout(resolve, milliseconds))
-        }
-
-        sleep(2000).then(() => {
-          this.nrData.str = ''
-          this.nrData.show = false
-          this.pledgeData.str = ''
-          this.pledgeData.show = false
-          let nrStr = 'NR计算周期：' + this.dateFormat(time[0].getTime()) + '-' + this.dateFormat(time[1].getTime()) + '\n'
-            + ', 通过NR发放的NAT数量: ' + parseInt(this.nrData.nrNat / 1000000000000000000)
-          this.nrData.str = nrStr
-          this.nrData.show = true
-          let pledgeStr = '质押周期：' + this.dateFormat(time[0].getTime() - 3600 * 1000 * 24 * 7) + '-' + this.dateFormat(time[1].getTime() - 3600 * 1000 * 24 * 7)
-            + ', 通过该周期质押进行发放的NAT数量共有: ' + parseInt(this.pledgeData.pledgeNat / 1000000000000000000)
-          this.pledgeData.str = pledgeStr
-          this.pledgeData.show = true
+        this.sleep(3000).then(() => {
+          if (tag === 'nr') {
+            this.nrData.str = '';
+            this.nrData.show = false
+            this.nrData.str = 'NR计算周期：' + this.dateFormat(startTimestamp) + '-' + this.dateFormat(endTimestamp) + '\n\\'
+              + ', 通过NR发放的NAT数量: ' + parseInt(this.nrData.nrNat / 1000000000000000000)
+            this.nrData.show = true
+          }
+          if (tag === 'pledge') {
+            this.pledgeData.str = ''
+            this.pledgeData.show = false
+            this.pledgeData.str = '质押周期：' + this.dateFormat(startTimestamp - 3600 * 1000 * 24 * 7) + '-' + this.dateFormat(endTimestamp - 3600 * 1000 * 24 * 7)
+              + ', 通过该周期质押进行发放的NAT数量共有: ' + parseInt(this.pledgeData.pledgeNat / 1000000000000000000);
+            this.pledgeData.show = true
+          }
+          if (address.length > 0) {
+            this.AddressData.str = ''
+            this.AddressData.show = false
+            this.AddressData.str = '地址: ' + address + ', 在'
+          }
         })
       },
-      getVoteNAT(time) {
-        if (this.voteData.voteList.length === 0 || time.length !== 2) {
-          this.$message({
+      getVoteNat(period, address = '') {
+        console.log('address: ', address.length)
+        if (period.length !== 2) {
+          this.$notify.error({
+            title: 'failed',
+            message: 'select time first',
             type: 'error',
-            message: 'please get vote transaction first',
             duration: 1000
           })
           return
         }
+        let list = this.voteData.voteList
+        let topic = this.voteData.topic
         this.voteData.rewardNat = 0
         this.voteData.burnNat = 0
-        for (let i = 0; i < this.voteData.voteList.length; i++) {
+        let startTimestamp = period[0].getTime()
+        let endTimestamp = period[1].getTime()
+        let periodList = []
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].timestamp > startTimestamp && list[i].timestamp < endTimestamp) {
+            periodList.push(list[i])
+          }
+        }
+        for (let j = 0; j < periodList.length; j++) {
           axios.post(this.getEventByHashUrl,
-            JSON.stringify({hash: this.voteData.voteList[i].hash}),
+            JSON.stringify({hash: periodList[j].hash}),
             {
               headers: {
                 'Content-Type': 'application/json'
               }
             }).then(response => {
-            let voteEvents = response.data.result.events
-            for (let j = 0; j < voteEvents.length; j++) {
-              if (voteEvents[j].topic === 'chain.contract.vote') {
-                let result = JSON.parse(voteEvents[j].data);
+            let events = response.data.result.events
+            for (let k = 0; k < events.length; k++) {
+              if (events[k].topic === topic) {
+                let result = JSON.parse(events[k].data)
                 this.voteData.rewardNat += parseFloat(result.reward)
                 let voteBurnNatList = result.data
                 this.voteData.burnNat += parseFloat(voteBurnNatList[1].nat)
+                if (address.length > 0 && address === voteBurnNatList[1].addr) {
+                  this.AddressData.vote.burnNat += parseFloat(voteBurnNatList[1].nat)
+                  this.AddressData.vote.rewardNat += parseFloat(result.reward)
+                }
               }
             }
           })
         }
-
-        function sleep(milliseconds) {
-          return new Promise(resolve => setTimeout(resolve, milliseconds))
-        }
-
-        sleep(2000).then(() => {
+        this.sleep(3000).then(() => {
           this.voteData.str = ''
           this.voteData.show = false
-          this.voteData.str = '投票周期: ' + this.dateFormat(time[0].getTime()) + '-' + this.dateFormat(time[1].getTime())
-          + ', 本周已投出的NAT中获得激励的数量: ' + parseInt(this.voteData.rewardNat / 10)
+          this.voteData.str = '投票周期: ' + this.dateFormat(startTimestamp) + '-' + this.dateFormat(endTimestamp)
+            + ', 本周已投出的NAT中获得激励的数量: ' + parseInt(this.voteData.rewardNat / 10)
           this.voteData.show = true
         })
 
+      },
+      getAddressData() {
+        if (this.AddressData.period.length !== 2) {
+          this.$message({
+            type: 'error',
+            message: 'please select time first',
+            duration: 1000
+          })
+          return
+        }
+        let period = this.AddressData.period
+        let address = this.AddressData.address
+        this.getPledgeNatOrNrNat('pledge', period, address)
       },
       dateFormat(timestamp) {
         console.log('timestamp: ', timestamp)
@@ -297,6 +327,9 @@
         let hour = date.getHours()
         let minutes = date.getMinutes()
         return month + '月' + day + '日' + hour + ':' + minutes
+      },
+      sleep(milliseconds) {
+        return new Promise(resolve => setTimeout(resolve, milliseconds))
       }
     }
   }
