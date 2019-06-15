@@ -1,5 +1,10 @@
 <template>
   <div class="hello">
+    <div class="total-nat">
+      <p v-show="allNat.show">
+        {{allNat.str}}
+      </p>
+    </div>
     <div class="pledge-data">
       <el-date-picker
         v-model="pledgeData.period"
@@ -69,6 +74,25 @@
         </p>
       </div>
     </div>
+    <div class="all-nat" style="margin-top: 50px">
+      <el-date-picker
+        v-model="allNat.periodData.period"
+        type="datetimerange"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        style="width: 350px"
+      >
+      </el-date-picker>
+      <el-button type="primary" @click="getAllNat(allNat.periodData.period)" round>get all nat</el-button>
+      <div>
+        <p v-show="allNat.periodData.show">
+          {{allNat.periodData.str}}
+        </p>
+      </div>
+    </div>
+
+
   </div>
 </template>
 
@@ -129,12 +153,32 @@
             str: ''
           },
           show: false
+        },
+        allNat: {
+          periodData: {
+            period: [],
+            pledgeNat: 0,
+            nrNat: 0,
+            voteRewardNat: 0,
+            totalNat: 0,
+            str: '',
+            show: false
+          },
+          pledgeNat: 0,
+          nrNat: 0,
+          voteRewardNat: 0,
+          totalNat: 0,
+          show: false,
+          str: ''
         }
       }
     },
     mounted() {
       this.get(this.getTxUrl, this.pledgeAndNrAddress)
       this.get(this.getTxUrl, this.voteAddress)
+      this.sleep(5000).then(() => {
+      this.getAllNat([])
+      })
     },
     methods: {
       get(url, address) {
@@ -157,7 +201,7 @@
               let list = response.data.data.txnList
               for (let j = 0; j < list.length; j++) {
                 if (list[j].status === 1) {
-                  let json = JSON.parse(list[j].data);
+                  let json = JSON.parse(list[j].data)
                   if (json.Function === 'triggerNR') {
                     let item = {
                       hash: list[j].hash,
@@ -174,7 +218,6 @@
                   }
                   if (json.Function === 'vote') {
                     let argsList = JSON.parse(json.Args)
-                    console.log(argsList)
                     let voteUsedNat = parseInt(argsList[argsList.length - 1] / 1000000000000000000)
                     let item = {
                       hash: list[j].hash,
@@ -243,7 +286,7 @@
                 for (let k = 0; k < data.length; k++) {
                   if (tag === 'pledge') {
                     if (address.length === 0) {
-                      this.pledgeData.pledgeNat += parseFloat(data[k].value);
+                      this.pledgeData.pledgeNat += parseFloat(data[k].value)
                     }
                     if (address.length > 0 && address === data[k].addr) {
                       this.addressData.pledge.nat += parseFloat(data[k].value)
@@ -251,7 +294,7 @@
                   }
                   if (tag === 'nr') {
                     if (address.length === 0) {
-                      this.nrData.nrNat += parseFloat(data[k].value);
+                      this.nrData.nrNat += parseFloat(data[k].value)
                     }
                     if (address.length > 0 && address === data[k].addr) {
                       this.addressData.nr.nat += parseFloat(data[k].value)
@@ -260,7 +303,7 @@
                 }
               }
             }
-          });
+          })
         }
         this.sleep(3000).then(() => {
           let startTime = this.dateFormat(startTimestamp)
@@ -268,7 +311,7 @@
           let startTimeMinus7 = this.dateFormat(startTimestamp - 3600 * 1000 * 24 * 7)
           let endTimeMinus7 = this.dateFormat(endTimestamp - 3600 * 1000 * 24 * 7)
           if (tag === 'nr' && address.length === 0) {
-            this.nrData.str = '';
+            this.nrData.str = ''
             this.nrData.show = false
             this.nrData.str = 'NR计算周期: ' + startTime + '-' + endTime + '\n\\'
               + ', 通过NR发放的NAT数量: ' + parseInt(this.nrData.nrNat / 1000000000000000000)
@@ -278,7 +321,7 @@
             this.pledgeData.str = ''
             this.pledgeData.show = false
             this.pledgeData.str = '质押周期: ' + startTimeMinus7 + '-' + endTimeMinus7
-              + ', 通过该周期质押进行发放的NAT数量共有: ' + parseInt(this.pledgeData.pledgeNat / 1000000000000000000);
+              + ', 通过该周期质押进行发放的NAT数量共有: ' + parseInt(this.pledgeData.pledgeNat / 1000000000000000000)
             this.pledgeData.show = true
           }
           if (address.length > 0) {
@@ -330,7 +373,7 @@
                 let result = JSON.parse(events[k].data)
                 let voteBurnNatList = result.data
                 if (address.length === 0) {
-                  this.voteData.rewardNat += parseFloat(result.reward);
+                  this.voteData.rewardNat += parseFloat(result.reward)
                   this.voteData.burnNat += parseFloat(voteBurnNatList[1].nat)
                 }
                 if (address.length > 0 && address === voteBurnNatList[1].addr) {
@@ -346,7 +389,7 @@
           let startTime = this.dateFormat(startTimestamp)
           let endTime = this.dateFormat(endTimestamp)
           if (address.length === 0) {
-            this.voteData.str = '';
+            this.voteData.str = ''
             this.voteData.show = false
             this.voteData.str = '投票周期: ' + startTime + '-' + endTime
               + ', 本周已投出的NAT中获得激励的数量: ' + parseInt(this.voteData.rewardNat / 10)
@@ -378,11 +421,138 @@
           })
           return
         }
-        let period = this.addressData.period;
+        let period = this.addressData.period
         let address = this.addressData.address
         this.getPledgeNatOrNrNat('pledge', period, address)
         this.getPledgeNatOrNrNat('nr', period, address)
         this.getVoteNat(period, address)
+      },
+      getAllNat(period = []) {
+        let pledgeTxList = this.pledgeData.pledgeTxList
+        let nrTxList = this.nrData.nrTxList
+        let voteTxList = this.voteData.voteTxList
+        if (pledgeTxList.length < 0 || nrTxList.length < 0 || voteTxList, length < 0) {
+          this.$notify.error({
+            title: 'failed',
+            message: 'get failed',
+            type: 'error',
+            duration: 1000
+          })
+          return
+        }
+        this.allNat.pledgeNat = 0
+        this.allNat.nrNat = 0
+        this.allNat.voteRewardNat = 0
+        this.allNat.totalNat = 0
+        if (period.length === 2) {
+          this.allNat.periodData.totalNat = 0
+          this.allNat.periodData.pledgeNat = 0
+          this.allNat.periodData.nrNat = 0
+          this.allNat.voteRewardNat = 0
+          pledgeTxList = this.filterList(pledgeTxList, period)
+          nrTxList = this.filterList(nrTxList, period)
+          voteTxList = this.filterList(voteTxList, period)
+        }
+        for (let i = 0; i < pledgeTxList.length; i++) {
+          axios.post(this.getEventByHashUrl,
+            JSON.stringify({hash: pledgeTxList[i].hash}),
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }).then(response => {
+            console.log('pledgeTxList.response: ', response)
+            let events = response.data.result.events
+            for (let j = 0; j < events.length; j++) {
+              if (events[j].topic === this.pledgeData.topic) {
+                let result = JSON.parse(events[j].data)
+                let data = result.Produce.data
+                for (let k = 0; k < data.length; k++) {
+                  if (period.length === 0) {
+                    this.allNat.pledgeNat += parseFloat(data[k].value)
+                    console.log('plus allNat.pledgeNat')
+                  }
+                  if (period.length === 2) {
+                    this.allNat.periodData.pledgeNat += parseFloat(data[k].value)
+                  }
+                }
+              }
+            }
+          });
+        }
+        for (let a = 0; a < nrTxList.length; a++) {
+          axios.post(this.getEventByHashUrl,
+            JSON.stringify({hash: nrTxList[a].hash}),
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }).then(response => {
+            let events = response.data.result.events
+            for (let b = 0; b < events.length; b++) {
+              if (events[b].topic === this.nrData.topic) {
+                let result = JSON.parse(events[b].data)
+                let data = result.Produce.data
+                for (let c = 0; c < data.length; c++) {
+                  if (period.length === 0) {
+                    this.allNat.nrNat += parseFloat(data[c].value)
+                  }
+                  if (period.length === 2) {
+                    this.allNat.periodData.nrNat += parseFloat(data[c].value)
+                  }
+                }
+              }
+            }
+          })
+        }
+        for (let z = 0; z < voteTxList.length; z++) {
+          axios.post(this.getEventByHashUrl,
+            JSON.stringify({hash: voteTxList[z].hash}),
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }).then(response => {
+            let events = response.data.result.events
+            for (let x = 0; x < events.length; x++) {
+              if (events[x].topic === this.voteData.topic) {
+                let result = JSON.parse(events[x].data)
+                if (period.length === 0) {
+                  this.allNat.voteRewardNat += parseFloat(result.reward)
+                }
+                if (period.length === 2) {
+                  this.allNat.periodData.voteRewardNat += parseFloat(result.reward)
+                }
+
+              }
+            }
+          })
+        }
+        this.sleep(5000).then(() => {
+          if (period.length === 0) {
+            this.allNat.str = ''
+            this.allNat.show = false
+            let pledgeNat = parseInt(this.allNat.pledgeNat / 1000000000000000000);
+            let nrNat = parseInt(this.allNat.nrNat / 1000000000000000000)
+            let voteRewardNat = parseInt(this.allNat.voteRewardNat / 10)
+            this.allNat.totalNat = pledgeNat + nrNat + voteRewardNat
+            this.allNat.str = '全网共发行NAT: ' + this.allNat.totalNat
+            this.allNat.show = true
+          }
+          if (period.length === 2) {
+            this.allNat.periodData.str = ''
+            this.allNat.periodData.show = false
+            let startTimestamp = period[0].getTime()
+            let endTimestamp = period[1].getTime()
+            let pledgeNat = parseInt(this.allNat.periodData.pledgeNat / 1000000000000000000);
+            let nrNat = parseInt(this.allNat.periodData.nrNat / 1000000000000000000)
+            let voteRewardNat = parseInt(this.allNat.periodData.voteRewardNat / 10)
+            this.allNat.periodData.totalNat = pledgeNat + nrNat + voteRewardNat
+            this.allNat.periodData.str = '计算周期: ' + this.dateFormat(startTimestamp) + '-' + this.dateFormat(endTimestamp)
+              + ', 全网共发行的NAT: ' + this.allNat.periodData.totalNat
+            this.allNat.periodData.show = true
+          }
+        })
       },
       dateFormat(timestamp) {
         console.log('timestamp: ', timestamp)
@@ -395,6 +565,17 @@
       },
       sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds))
+      },
+      filterList(targetList, period) {
+        let startTimestamp = period[0].getTime()
+        let endTimestamp = period[1].getTime()
+        let resultList = []
+        for (let i = 0; i < targetList.length; i++) {
+          if (targetList[i].timestamp > startTimestamp && targetList[i].timestamp < endTimestamp) {
+            resultList.push(targetList[i])
+          }
+        }
+        return resultList
       }
     }
   }
