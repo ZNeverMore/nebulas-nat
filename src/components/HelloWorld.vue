@@ -109,7 +109,6 @@
         voteAddress: 'n1pADU7jnrvpPzcWusGkaizZoWgUywMRGMY',
         getTxUrl: 'https://explorer-backend.nebulas.io/api/tx/',
         getEventByHashUrl: 'https://mainnet.nebulas.io/v1/user/getEventsByHash',
-        testPeriod: [],
         pledgeData: {
           period: [],
           pledgeTxList: [],
