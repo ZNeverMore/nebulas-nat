@@ -43,33 +43,33 @@
       }
     },
     mounted() {
-      this.get(this.getTxUrl, this.pledgeAndNrAddress, 'pledgeAndNr')
-      this.get(this.getTxUrl, this.voteAddress, 'vote')
+      // this.get(this.getTxUrl, this.pledgeAndNrAddress, 'pledgeAndNr')
+      // this.get(this.getTxUrl, this.voteAddress, 'vote')
     },
     methods: {
       test() {
-        let str = '64221f3d8ef895e9ecc3eec4ccb969e0c905f164af3f1a35f40922091a3372ad'
-        axios.post(this.getEventByHashUrl,
-          JSON.stringify({hash: str}),
-          {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }).then(response => {
-            console.log(response)
-        })
-        // let item = {
-        //   hash: 'test',
-        //   timestamp: 1234567891,
-        //   usedNat: '100'
-        // }
-        // axios.post('/api/vote/insert/single', item).then(response => {
-        //   if (response.data.code === 200) {
-        //     this.getVoteEventsByHash(hash)
-        //   } else {
-        //     console.log('insert vote tx error response', response.data)
-        //   }
+        // let str = '64221f3d8ef895e9ecc3eec4ccb969e0c905f164af3f1a35f40922091a3372ad'
+        // axios.post(this.getEventByHashUrl,
+        //   JSON.stringify({hash: str}),
+        //   {
+        //     headers: {
+        //       'Content-Type': 'application/json'
+        //     }
+        //   }).then(response => {
+        //     console.log(response)
         // })
+        let item = {
+          hash: 'test',
+          timestamp: 1234567891,
+          usedNat: '100'
+        }
+        axios.post('/api/vote/insert/single', item).then(response => {
+          if (response.data.code === 200) {
+            // this.getVoteEventsByHash(hash)
+          } else {
+            console.log('insert vote tx error response', response.data)
+          }
+        })
       },
       get(url, address, tag) {
         let firstParam = {
@@ -90,6 +90,9 @@
             axios.get(url, params).then(response => {
               let list = response.data.data.txnList
               for (let j = 0; j < list.length; j++) {
+                if (j % 20 === 0) {
+                  this.sleep(2000)
+                }
                 if (list[j].status === 1) {
                   let hash = list[j].hash
                   let json = JSON.parse(list[j].data)
@@ -140,6 +143,9 @@
                 if (tag === 'pledgeAndNr') {
                   let pledgeTxList = this.pledgeData.pledgeTxList
                   for (let b = 0; b < pledgeTxList.length; b++) {
+                    if (b % 20 === 0) {
+                      this.sleep(2000)
+                    }
                     this.getPledgeEventsByHash(pledgeTxList[b].hash)
                   }
                 }
@@ -148,6 +154,9 @@
                 if (tag === 'pledgeAndNr') {
                   let nrTxList = this.nrData.nrTxList;
                   for (let m = 0; m < nrTxList.length; m++) {
+                    if (m % 20 === 0) {
+                      this.sleep(2000)
+                    }
                     this.getNrEventsByHash(nrTxList[m].hash)
                   }
                 }
@@ -156,6 +165,9 @@
                 if (tag === 'vote') {
                   let voteTxList = this.voteData.voteTxList
                   for (let n = 0; n < voteTxList.length; n++) {
+                    if (n % 20 === 0) {
+                      this.sleep(2000)
+                    }
                     this.getVoteEventsByHash(voteTxList[n].hash)
                   }
                 }
@@ -207,11 +219,14 @@
       savePledgeTxEventsListByHash() {
         let list = this.pledgeData.pledgeTxEventsList
         for (let i = 0; i < list.length; i++) {
+          if (i % 20 === 0) {
+            this.sleep(2000)
+          }
           axios.post('/api/pledge/insert/nat', list[i]).then(response => {
             if (response.data.code !== 200) {
               console.log('insert pledge nat by hash error: ',response.data)
             }
-          })
+          });
         }
       },
       saveNrTxList() {
@@ -257,11 +272,14 @@
       saveNrTxEventsListByHash() {
         let list = this.nrData.nrTxEventsList
         for (let i = 0; i < list.length; i++) {
+          if (i % 20 === 0) {
+            this.sleep(2000)
+          }
           axios.post('/api/nr/insert/nat', list[i]).then(response => {
             if (response.data.code !== 200) {
               console.log('insert nr nat by hash error: ', response.data)
             }
-          })
+          });
         }
       },
       saveVoteTxList() {
@@ -306,11 +324,14 @@
       saveVoteTxEventsListByHash() {
         let list = this.voteData.voteTxEventsList
         for (let i = 0; i < list.length; i++) {
+          if (i % 20 === 0) {
+            this.sleep(2000)
+          }
           axios.post('/api/vote/insert/reward', list[i]).then(response => {
             if (response.data.code !== 200) {
               console.log('insert vote reward error: ', response.data)
             }
-          })
+          });
         }
       },
       sleep(milliseconds) {
