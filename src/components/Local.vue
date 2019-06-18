@@ -135,15 +135,12 @@
                     })
                   }
                 }
-                if (i === totalPage && j === list.length - 1) {
-                  console.log('get complete')
-                }
               }
               this.sleep(5000).then(() => {
                 if (tag === 'pledgeAndNr') {
                   let pledgeTxList = this.pledgeData.pledgeTxList
-                  for (let i = 0; i < pledgeTxList.length; i++) {
-                    this.getPledgeEventsByHash(pledgeTxList[i])
+                  for (let b = 0; b < pledgeTxList.length; b++) {
+                    this.getPledgeEventsByHash(pledgeTxList[b].hash)
                   }
                 }
               })
@@ -151,7 +148,7 @@
                 if (tag === 'pledgeAndNr') {
                   let nrTxList = this.nrData.nrTxList;
                   for (let m = 0; m < nrTxList.length; m++) {
-                    this.getNrEventsByHash(nrTxList[i])
+                    this.getNrEventsByHash(nrTxList[m].hash)
                   }
                 }
               })
@@ -159,7 +156,7 @@
                 if (tag === 'vote') {
                   let voteTxList = this.voteData.voteTxList
                   for (let n = 0; n < voteTxList.length; n++) {
-                    this.getVoteEventsByHash(voteTxList[n])
+                    this.getVoteEventsByHash(voteTxList[n].hash)
                   }
                 }
               })
